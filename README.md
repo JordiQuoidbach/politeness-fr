@@ -29,11 +29,25 @@ For detailed information, see [FRENCH_ADAPTATION.md](FRENCH_ADAPTATION.md).
 
 ## Installation
 
-You can install politeness directly, like so:
+This French adaptation is available on GitHub. You can install it using `devtools` or `remotes`:
 
 
 ``` r
- install.packages("politeness")
+# Install devtools if you haven't already
+# install.packages("devtools")
+
+# Install the French adaptation from GitHub
+devtools::install_github("JordiQuoidbach/politeness-fr")
+
+# Or using remotes
+# remotes::install_github("JordiQuoidbach/politeness-fr")
+```
+
+**Note:** This package extends the original [politeness](https://github.com/myeomans/politeness) package. The original English version is available on CRAN:
+
+
+``` r
+install.packages("politeness")
 ```
 
 Many of the politeness features contained in this package use dependency parsing. We rely on the popular python library [SpaCy](https://spacy.io/), which is simple to install, although the procedure can vary for different machines. Our software depends on a convenient wrapper function, [spacyr](https://spacyr.quanteda.io/), that also includes several installation tools. 
