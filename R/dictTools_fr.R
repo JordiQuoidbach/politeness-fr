@@ -118,10 +118,37 @@ polite_dicts_fr <- list(
     "eh", "hein", "hum", "mh", "mmh"
   ),
   InformalTitle = c(
-    "mec", "mec*", "pote", "pote*", "copain", "copine", "poteau", "poteau*",
-    "camarade", "ami", "amie", "gars", "gars*", "fille", "fille*",
-    "mon pote", "ma pote", "mon gars", "mon vieux", "ma vieille"
-  ),
+  # multiword vocatives (low false-positive)
+  "mon pote", "ma pote",
+  "mon gars",
+  "mon vieux", "ma vieille",
+  "mon ami", "mon amie",
+  "ma belle", "mon beau",
+  "mon grand", "ma grande",
+  "les gars", "les amis"
+),
+
+# single-token vocatives ONLY counted at start-of-turn (to avoid "un mec", "des mecs")
+InformalTitleStartWords = c(
+  "mec", "pote",
+  "frero", "fréro",
+  "frerot", "frérot",
+  "frangin",
+  "bro",
+  "boss"
+),
+
+# interjection + vocative (captures mid-turn addressing without counting "un mec")
+InformalTitleInterjectionPhrases = c(
+  "eh mec", "hé mec", "hey mec", "yo mec",
+  "eh pote", "hé pote", "hey pote", "yo pote",
+  "eh copain", "hé copain", "hey copain", "yo copain",
+  "eh bro", "hé bro", "hey bro", "yo bro",
+  "eh frero", "hé frero", "hey frero", "yo frero", "eh frérot", "hé frérot", "hey frérot", "yo frérot",
+  "eh frere", "hé frere", "hey frere", "yo frere", "eh frére", "hé frére", "hey frére", "yo frére",
+  "wesh mec", "wesh frero", "wesh frérot", "wesh frere", "wesh frére", "wesh bro",
+  "ouais bro", "ouais frero", "ouais frérot", "ouais frere", "ouais frére"
+),
   FormalTitle = c(
     "monsieur", "m.", "madame", "mme", "mademoiselle", "mlle",
     "monsieur*", "madame*", "mademoiselle*", "sieur", "dame",
@@ -132,10 +159,43 @@ polite_dicts_fr <- list(
     "on", "nous", "vous", "ils", "elles", "eux", "soi", "soi-même"
   ),
   Swearing = c(
-    "merde", "putain", "con", "connard", "connasse", "salope", "salopard",
-    "enculé", "enculée", "bordel", "foutre", "fout", "fous", "foutons",
-    "foutez", "foutent", "crétin", "crétine", "idiot", "idiote", "imbécile",
-    "abruti", "abrutie", "débile", "débiles"
+  # core profanity
+  "merde","putain","ptain","p tain","bordel","chiant","chiante","chiants","chiantes",
+  "fait chier","faire chier","fait iech","saoule","saoulant","saoulante",
+  "putain de","bordel de merde","merdier","merdique","saloperie",
+
+  # "con" family (very common)
+  "con","cons","conne","connes",
+  "connard","connards","connasse","connasses",
+  "connerie","conneries",
+
+  # stupidity/insults (common in workplace + patients)
+  "idiot","idiots","idiote","idiotes",
+  "imbecile","imbeciles","imbécile","imbéciles",
+  "debil","debile","debiles","débile","débiles",
+  "cretin","cretins","cretine","cretines","crétin","crétins","crétine","crétines",
+  "abruti","abrutis","abrutie","abruties",
+  "boulet","boulets","gogole","gogoles","bouffon","bouffons","bouffonne","bouffonnes",
+  "clown","clowns","guignol","guignols",
+  "naze","nul","nulle","nuls","nulles","minable","minables",
+
+  # vulgar/sexual insults (strong)
+  "encule","encules","enculee","enculees","enculé","enculés","enculée","enculées",
+  "pute","putes",
+  "salope","salopes","salaud","salauds","salopard","salopards","ordure","ordures",
+  "batard","batards","batarde","batardes","bâtard","bâtards","bâtarde","bâtardes",
+
+  # very common hostile imperatives / phrases
+  "ta gueule","ferme ta gueule","tg","ftg",
+  "va te faire foutre","va te faire voir","va te faire mettre",
+  "casse toi","degage","dégage","barre toi","barre toi de la",
+  "nique","nique ta mere","nique ta mère","ntm",
+  "fils de pute","fdp",
+  "sale con","sale conne","gros con","grosse conne","sac a merde","sac à merde",
+  "enfoire",
+
+  # “couilles” family (very spoken)
+  "couille","couilles","casse couilles","casse couille","casse-couilles","casse-couille"
   )
 )
 
