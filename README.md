@@ -7,7 +7,7 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/politeness?color=green)](https://cran.r-project.org/package=politeness)
 [![](http://cranlogs.r-pkg.org/badges/last-month/politeness?color=green)](https://cran.r-project.org/package=politeness)
 
-Politeness is a universal dimension of langauge (Lakoff, 1973; Brown &
+Politeness is a universal dimension of language (Lakoff, 1973; Brown &
 Levinson, 1987). In practically all communication, a speaker can choose
 to be more or less polite to their audience. In this package, we provide
 tools for researchers to measure the markers and effects of politeness
@@ -21,12 +21,12 @@ You can install politeness directly, like so:
  install.packages("politeness")
 ```
 
-Many of the politeness features containted in this package use
+Many of the politeness features contained in this package use
 dependency parsing. We rely on the popular python library
 [SpaCy](https://spacy.io/), which is simple to install, although the
 procedure can vary for different machines. Our software depends on a
 convenient wrapper function, [spacyr](https://spacyr.quanteda.io/), that
-also includes several intallation tools. If you do not have SpaCy
+also includes several installation tools. If you do not have SpaCy
 installed, a reduced set of features is provided (i.e. those that do not
 require dependency tags) but this only recommended for initial tests,
 rather than final analyses.

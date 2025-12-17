@@ -18,6 +18,7 @@
 #'
 #' @export
 
-politenessPlot<-function(df_polite,...){
-  featurePlot(df_polite,...)
+politenessPlot <- function(df_polite, ...) {
+  .Deprecated("featurePlot")
+  featurePlot(df_polite, ...)
 }
