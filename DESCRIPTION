@@ -1,10 +1,13 @@
 Package: politeness
 Type: Package
-Title: Detecting Politeness Features in Text
+Title: Detecting Politeness Features in Text (French Adaptation)
 Version: 0.9.4
-Author: Mike Yeomans, Alejandro Kantor, Dustin Tingley
-Maintainer: Mike Yeomans <mk.yeomans@gmail.com>
-Description: Detecting markers of politeness in English natural language. This package allows researchers to easily visualize and quantify politeness between groups of documents. This package combines prior research on the linguistic markers of politeness. We thank the Spencer Foundation, the Hewlett Foundation, and Harvard's Institute for Quantitative Social Science for support.
+Author: Jordi Quoidbach [aut, cre],
+    Mike Yeomans [ctb] (Original package author),
+    Alejandro Kantor [ctb] (Original package author),
+    Dustin Tingley [ctb] (Original package author)
+Maintainer: Jordi Quoidbach <jordiquoidbach@MacBook-Pro-9.local>
+Description: French-language adaptation of the politeness package for detecting markers of politeness in French natural language. This package extends the original English politeness package with French-specific features including tutoiement/vouvoiement, imparfait de politesse, and conditionnel de politesse. The original package was created by Yeomans, Kantor, and Tingley (2018). This adaptation allows researchers to easily visualize and quantify politeness between groups of French documents.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
