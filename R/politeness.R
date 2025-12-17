@@ -47,298 +47,275 @@
 #'
 #'@export
 
-politeness<-function(text, parser=c("none","spacy"),
-                     metric=c("count","binary","average"),
-                     drop_blank=FALSE,
-                     uk_english=FALSE,
-                     num_mc_cores=1){
+politeness <- function(text, parser=c("none", "spacy"),
+                       metric=c("count", "binary", "average"),
+                       drop_blank=FALSE,
+                       uk_english=FALSE,
+                       num_mc_cores=1) {
 
-  text=as.character(unlist(text))
-  text[is.na(text)]<-" "
-  if(uk_english){
-    text<-usWords(text)
+  text <- as.character(unlist(text))
+  text[is.na(text)] <- " "
+  if (uk_english) {
+    text <- usWords(text)
   }
-  text<-paste(text," ")
-  ########################################################
-  # See if I can force people into spacy
-  ########################################################
-  # if(parser[1]=="spacy"){
-  #
-  # }
-  # my_function <- function(x, y){
-  #   tryCatch(
-  #     #try to do this
-  #     {
-  #       #some expression
-  #     },
-  #     #if an error occurs, tell me the error
-  #     error=function(e) {
-  #       message('An Error Occurred')
-  #       print(e)
-  #       parser<-"none"
-  #     }
-  #   )
-  # }
+  text <- paste(text, " ")
 
   ########################################################
   # Generates broad token lists for feature creation below
-  if(length(text)<2000){
-    sets<-getTokenSets(text=text,parser=parser[1],num_mc_cores=num_mc_cores)
-  } else{
-
+  if (length(text) < 2000) {
+    sets <- getTokenSets(text=text, parser=parser[1], num_mc_cores=num_mc_cores)
+  } else {
     # Batched loop to minimize memory load on SpaCy for big files
-    textList<-split(text, ceiling(seq_along(text)/1000))
-    setList<-lapply(1:length(textList),function(x) NA)
-    sets<-list()
-    tpb<-utils::txtProgressBar(0,length(textList))
-    for (x in 1:length(textList)){
-      setList[[x]]<-getTokenSets(text=textList[[x]],parser=parser[1],num_mc_cores=num_mc_cores)
-      utils::setTxtProgressBar(tpb,x)
+    textList <- split(text, ceiling(seq_along(text)/1000))
+    setList <- vector("list", length(textList))
+    tpb <- utils::txtProgressBar(0, length(textList), style = 3)
+    for (x in seq_along(textList)) {
+      setList[[x]] <- getTokenSets(text=textList[[x]], parser=parser[1], num_mc_cores=num_mc_cores)
+      utils::setTxtProgressBar(tpb, x)
     }
-    sets[["dicts"]]<-do.call(rbind,lapply(setList,function(x) x[["dicts"]]))
-    .names<-names(setList[[1]])[names(setList[[1]])!="dicts"]
-    for(n in .names){
-      sets[[n]]<-do.call(c,lapply(setList,function(x) x[[n]]))
+    sets <- list()
+    sets[["dicts"]] <- do.call(rbind, lapply(setList, function(x) x[["dicts"]]))
+    .names <- names(setList[[1]])[names(setList[[1]]) != "dicts"]
+    for (n in .names) {
+      sets[[n]] <- do.call(c, lapply(setList, function(x) x[[n]]))
     }
   }
   ########################################################
-  features<-list()
-  features[["Hedges"]]<-textcounter(hedge_list,sets[["c.words"]],words=TRUE, num_mc_cores=num_mc_cores)
-  features[["Impersonal.Pronoun"]]<-sets[["dicts"]][,"Pronouns"]
-  features[["Swearing"]]<-sets[["dicts"]][,"Swearing"]
-  features[["Negation"]]<-sets[["dicts"]][,"Negation"]
-  features[["Filler.Pause"]]<-sets[["dicts"]][,"FilledPause"]
-  features[["Informal.Title"]]<-sets[["dicts"]][,"InformalTitle"]
-  features[["Formal.Title"]]<-sets[["dicts"]][,"FormalTitle"]
+  features <- list()
+  features[["Hedges"]] <- textcounter(hedge_list, sets[["c.words"]], words=TRUE, num_mc_cores=num_mc_cores)
+  features[["Impersonal.Pronoun"]] <- sets[["dicts"]][, "Pronouns"]
+  features[["Swearing"]] <- sets[["dicts"]][, "Swearing"]
+  features[["Negation"]] <- sets[["dicts"]][, "Negation"]
+  features[["Filler.Pause"]] <- sets[["dicts"]][, "FilledPause"]
+  features[["Informal.Title"]] <- sets[["dicts"]][, "InformalTitle"]
+  features[["Formal.Title"]] <- sets[["dicts"]][, "FormalTitle"]
 
   # Titles - "boss" vs "my boss", "son" vs "our son"
 
-  features[["Could.You"]]<-textcounter(c("could you","would you","might you"),sets[["clean"]], num_mc_cores=num_mc_cores)
-  features[["Can.You"]]<-textcounter(c("can you","will you"),sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["Could.You"]] <- textcounter(c("could you", "would you", "might you"), sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["Can.You"]] <- textcounter(c("can you", "will you"), sets[["clean"]], num_mc_cores=num_mc_cores)
 
-  features[["By.The.Way"]]<-textcounter(c("by the way"),sets[["clean"]], num_mc_cores=num_mc_cores)
-  features[["Let.Me.Know"]]<-textcounter(c("let me know"),sets[["clean"]], num_mc_cores=num_mc_cores)
-  features[["Goodbye"]]<-textcounter(c("goodbye", " bye ", "see you later"),sets[["clean"]], num_mc_cores=num_mc_cores)
-  features[["For.Me"]]<-textcounter(c(" for me ","for us "),sets[["clean"]], num_mc_cores=num_mc_cores)
-  features[["For.You"]]<-textcounter(" for you ",sets[["clean"]], num_mc_cores=num_mc_cores)
-  features[["Reasoning"]]<-textcounter(c("reason", "why i ", "why we ", "explain", "caused","because"),sets[["clean"]],
-                                       num_mc_cores=num_mc_cores)
-
-  features[["Contrast.Conjunction"]]<-textcounter(c("but","however","instead",
-                                                    "although","even though",
-                                                    "despite","and yet",
-                                                    "nevertheless","nonetheless"),sets[["clean"]],
-                                                  num_mc_cores=num_mc_cores)
-
-  features[["Reassurance"]]<-textcounter(c("is okay", "not worry", "no big deal", "not a big deal", "no problem",
-                                           "no worries", "is fine", "you are good", "it's fine", "it's okay") ,sets[["clean"]],
-                                         num_mc_cores=num_mc_cores)
-  features[["Ask.Agency"]]<-textcounter(c("do me a favor", " let me ", " allow me ", " can i ", " should i ",
-                                          " may i ", "might i ", " could i "),sets[["clean"]],
-                                        num_mc_cores=num_mc_cores)
-  features[["Give.Agency"]]<-textcounter(c("let you", "allow you", "you can ", " you may ", " you could "),sets[["clean"]],
+  features[["By.The.Way"]] <- textcounter(c("by the way"), sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["Let.Me.Know"]] <- textcounter(c("let me know"), sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["Goodbye"]] <- textcounter(c("goodbye", " bye ", "see you later"), sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["For.Me"]] <- textcounter(c(" for me ", "for us "), sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["For.You"]] <- textcounter(" for you ", sets[["clean"]], num_mc_cores=num_mc_cores)
+  features[["Reasoning"]] <- textcounter(c("reason", "why i ", "why we ", "explain", "caused", "because"), sets[["clean"]],
                                          num_mc_cores=num_mc_cores)
 
-  features[["Hello"]]<-(textcounter(c("hi","hello","hey","greetings","howdy"),sets[["c.words"]],words=TRUE,
-                                    num_mc_cores=num_mc_cores)+
-                          textcounter(c("good morning", "good evening", "good afternoon"),sets[["clean"]],
-                                      num_mc_cores=num_mc_cores))
+  features[["Contrast.Conjunction"]] <- textcounter(c("but", "however", "instead",
+                                                      "although", "even though",
+                                                      "despite", "and yet",
+                                                      "nevertheless", "nonetheless"), sets[["clean"]],
+                                                    num_mc_cores=num_mc_cores)
 
-  features[["Please"]]<-textcounter("please",sets[["c.words"]],words=TRUE,
-                                    num_mc_cores=num_mc_cores)
-
-  features[["First.Person.Plural"]]<-textcounter(c("we", "us", "our", "ours", "ourselves"),sets[["c.words"]],words=TRUE,
-                                                 num_mc_cores=num_mc_cores)
-
-  features[["First.Person.Single"]]<-textcounter(c("i","me","my","mine","myself"),sets[["c.words"]],words=TRUE,
-                                                 num_mc_cores=num_mc_cores)
-
-  features[["Second.Person"]]<-textcounter(c("you","your","yours","yourself", "yourselves","y'all"),sets[["c.words"]],words=TRUE,
+  features[["Reassurance"]] <- textcounter(c("is okay", "not worry", "no big deal", "not a big deal", "no problem",
+                                             "no worries", "is fine", "you are good", "it's fine", "it's okay"), sets[["clean"]],
+                                           num_mc_cores=num_mc_cores)
+  features[["Ask.Agency"]] <- textcounter(c("do me a favor", " let me ", " allow me ", " can i ", " should i ",
+                                            " may i ", "might i ", " could i "), sets[["clean"]],
+                                          num_mc_cores=num_mc_cores)
+  features[["Give.Agency"]] <- textcounter(c("let you", "allow you", "you can ", " you may ", " you could "), sets[["clean"]],
                                            num_mc_cores=num_mc_cores)
 
-  features[["Third.Person"]]<-textcounter(c("he","him","his","himself",
-                                            "she","her","hers","herself",
-                                            "they","them","their","theirs","themselves"),
-                                          sets[["c.words"]],words=TRUE,
-                                          num_mc_cores=num_mc_cores)
-  features[["Questions"]]<-textcounter("?",text, num_mc_cores=num_mc_cores)
+  features[["Hello"]] <- (textcounter(c("hi", "hello", "hey", "greetings", "howdy"), sets[["c.words"]], words=TRUE,
+                                      num_mc_cores=num_mc_cores) +
+                            textcounter(c("good morning", "good evening", "good afternoon"), sets[["clean"]],
+                                        num_mc_cores=num_mc_cores))
 
-  #if(parser[1]=="none"){
-  if(parser[1]!="spacy"){
-    if(length(parser)==2){
+  features[["Please"]] <- textcounter("please", sets[["c.words"]], words=TRUE,
+                                      num_mc_cores=num_mc_cores)
+
+  features[["First.Person.Plural"]] <- textcounter(c("we", "us", "our", "ours", "ourselves"), sets[["c.words"]], words=TRUE,
+                                                   num_mc_cores=num_mc_cores)
+
+  features[["First.Person.Single"]] <- textcounter(c("i", "me", "my", "mine", "myself"), sets[["c.words"]], words=TRUE,
+                                                   num_mc_cores=num_mc_cores)
+
+  features[["Second.Person"]] <- textcounter(c("you", "your", "yours", "yourself", "yourselves", "y'all"), sets[["c.words"]], words=TRUE,
+                                             num_mc_cores=num_mc_cores)
+
+  features[["Third.Person"]] <- textcounter(c("he", "him", "his", "himself",
+                                              "she", "her", "hers", "herself",
+                                              "they", "them", "their", "theirs", "themselves"),
+                                            sets[["c.words"]], words=TRUE,
+                                            num_mc_cores=num_mc_cores)
+  features[["Questions"]] <- textcounter("?", text, num_mc_cores=num_mc_cores)
+
+  if (parser[1] != "spacy") {
+    if (length(parser) == 2) {
       cat("Warning: Please install and initialize SpaCy, using the spacyr R package. This is an INCOMPLETE version of the package.")
     }
-    features[["Positive.Emotion"]]<-textcounter(positive_list,sets[["c.words"]],words=TRUE, num_mc_cores=num_mc_cores)
-    features[["Negative.Emotion"]]<-textcounter(negative_list,sets[["c.words"]],words=TRUE, num_mc_cores=num_mc_cores)
-    features[["Gratitude"]]<-(unlist(lapply(sets[["c.words"]], function(x) sum(startsWith(unlist(x), prefix="thank"))))+
-                                unlist(lapply(sets[["c.words"]], function(x) sum(startsWith(unlist(x), prefix="grateful"))))+
-                                unlist(lapply(sets[["c.words"]], function(x) sum(startsWith(unlist(x), prefix="gratitude")))))
-    features[["Apology"]]<-textcounter(c("sorry"," woops","oops","whoops","apologize"),sets[["c.words"]],words=TRUE,
-                                       num_mc_cores=num_mc_cores)
-    features[["Truth.Intensifier"]]<-(textcounter(c("really", "actually", "honestly", "surely"),sets[["c.words"]],words=TRUE,
-                                                  num_mc_cores=num_mc_cores)+
-                                        textcounter(c("in fact"),sets[["clean"]],num_mc_cores=num_mc_cores))
+    features[["Positive.Emotion"]] <- textcounter(positive_list, sets[["c.words"]], words=TRUE, num_mc_cores=num_mc_cores)
+    features[["Negative.Emotion"]] <- textcounter(negative_list, sets[["c.words"]], words=TRUE, num_mc_cores=num_mc_cores)
+    features[["Gratitude"]] <- (vapply(sets[["c.words"]], function(x) sum(startsWith(x, prefix="thank")), numeric(1)) +
+                                  vapply(sets[["c.words"]], function(x) sum(startsWith(x, prefix="grateful")), numeric(1)) +
+                                  vapply(sets[["c.words"]], function(x) sum(startsWith(x, prefix="gratitude")), numeric(1)))
+    features[["Apology"]] <- textcounter(c("sorry", " woops", "oops", "whoops", "apologize"), sets[["c.words"]], words=TRUE,
+                                         num_mc_cores=num_mc_cores)
+    features[["Truth.Intensifier"]] <- (textcounter(c("really", "actually", "honestly", "surely"), sets[["c.words"]], words=TRUE,
+                                                    num_mc_cores=num_mc_cores) +
+                                          textcounter(c("in fact"), sets[["clean"]], num_mc_cores=num_mc_cores))
   } else {
-    features[["Positive.Emotion"]]<-(textcounter(positive_list,sets[["unneg.words"]],words=TRUE, num_mc_cores=num_mc_cores)
-                                     +textcounter(negative_list,sets[["neg.words"]],words=TRUE, num_mc_cores=num_mc_cores))
-    features[["Negative.Emotion"]]<-(textcounter(positive_list,sets[["neg.words"]],words=TRUE, num_mc_cores=num_mc_cores)
-                                     +textcounter(negative_list,sets[["unneg.words"]],words=TRUE, num_mc_cores=num_mc_cores))
+    features[["Positive.Emotion"]] <- (textcounter(positive_list, sets[["unneg.words"]], words=TRUE, num_mc_cores=num_mc_cores)
+                                       + textcounter(negative_list, sets[["neg.words"]], words=TRUE, num_mc_cores=num_mc_cores))
+    features[["Negative.Emotion"]] <- (textcounter(positive_list, sets[["neg.words"]], words=TRUE, num_mc_cores=num_mc_cores)
+                                       + textcounter(negative_list, sets[["unneg.words"]], words=TRUE, num_mc_cores=num_mc_cores))
 
-    features[["Agreement"]]<-(unlist(lapply(sets[["p.unnegs"]],
-                                            function(x) sum(textcounter(c("nsubj(agree, i)","nsubj(concur, i)",
-                                                                          "nsubj(agree, we)","nsubj(concur, we)",
-                                                                          "acomp('re, right)","acomp(are, right)",
-                                                                          "acomp('re, correct)","acomp(are, correct)",
-                                                                          "acomp('s, right)","acomp(is, right)",
-                                                                          "acomp('s, correct)","acomp(is, correct)",
-                                                                          "acomp('s, true)","acomp(is, true)"),x, words=TRUE,
-                                                                        num_mc_cores=num_mc_cores))))+
-                                textcounter(apply(expand.grid(c("good","great","excellent","brilliant","fair","amazing"),
-                                                              c("idea", "point","suggestion")),1,paste, collapse=" "),
-                                            sets[["clean"]],num_mc_cores=num_mc_cores))
+    features[["Agreement"]] <- (vapply(sets[["p.unnegs"]],
+                                       function(x) sum(textcounter(c("nsubj(agree, i)", "nsubj(concur, i)",
+                                                                     "nsubj(agree, we)", "nsubj(concur, we)",
+                                                                     "acomp('re, right)", "acomp(are, right)",
+                                                                     "acomp('re, correct)", "acomp(are, correct)",
+                                                                     "acomp('s, right)", "acomp(is, right)",
+                                                                     "acomp('s, correct)", "acomp(is, correct)",
+                                                                     "acomp('s, true)", "acomp(is, true)"), x, words=TRUE,
+                                                                   num_mc_cores=num_mc_cores)), numeric(1)) +
+                                  textcounter(apply(expand.grid(c("good", "great", "excellent", "brilliant", "fair", "amazing"),
+                                                                c("idea", "point", "suggestion")), 1, paste, collapse=" "),
+                                              sets[["clean"]], num_mc_cores=num_mc_cores))
 
-    features[["Disagreement"]]<-(unlist(lapply(sets[["p.negs"]],
-                                               function(x) sum(textcounter(c("nsubj(agree, i)","nsubj(concur, i)",
-                                                                             "nsubj(agree, we)","nsubj(concur, we)",
-                                                                             "nsubj(think, we)","nsubj(think, i)",
-                                                                             "nsubj(believe, we)","nsubj(believe, i)",
-                                                                             "acomp('re, right)","acomp(are, right)",
-                                                                             "acomp('re, correct)","acomp(are, correct)",
-                                                                             "acomp('s, right)","acomp(is, right)",
-                                                                             "acomp('s, correct)","acomp(is, correct)",
-                                                                             "acomp('s, true)","acomp(is, true)"),x, words=TRUE,
-                                                                           num_mc_cores=num_mc_cores))))
-                                 +unlist(lapply(sets[["p.unnegs"]],
-                                                function(x) sum(textcounter(c("nsubj(disagree, i)","nsubj(object, i)",
-                                                                              "nsubj(disagree, we)","nsubj(object, we)",
-                                                                              "acomp('re, wrong)","acomp(are, wrong)",
-                                                                              "acomp('re, incorrect)","acomp(are, incorrect)",
-                                                                              "acomp('s, wrong)","acomp(is, wrong)",
-                                                                              "acomp('s, incorrect)","acomp(is, incorrect)",
-                                                                              "acomp('s, untrue)","acomp(is, untrue)",
-                                                                              "det(lie, a)","det(myth, a)",
-                                                                              "acomp('s, false)","acomp(is, false)"),x, words=TRUE,
-                                                                            num_mc_cores=num_mc_cores))))
-                                 +textcounter(apply(expand.grid(c("bad","terrible","horrible","awful","dumb","stupid"),
-                                                                c("idea", "point","suggestion")),1,paste, collapse=" "),
-                                              sets[["clean"]],num_mc_cores=num_mc_cores)
+    features[["Disagreement"]] <- (vapply(sets[["p.negs"]],
+                                          function(x) sum(textcounter(c("nsubj(agree, i)", "nsubj(concur, i)",
+                                                                        "nsubj(agree, we)", "nsubj(concur, we)",
+                                                                        "nsubj(think, we)", "nsubj(think, i)",
+                                                                        "nsubj(believe, we)", "nsubj(believe, i)",
+                                                                        "acomp('re, right)", "acomp(are, right)",
+                                                                        "acomp('re, correct)", "acomp(are, correct)",
+                                                                        "acomp('s, right)", "acomp(is, right)",
+                                                                        "acomp('s, correct)", "acomp(is, correct)",
+                                                                        "acomp('s, true)", "acomp(is, true)"), x, words=TRUE,
+                                                                      num_mc_cores=num_mc_cores)), numeric(1))
+                                   + vapply(sets[["p.unnegs"]],
+                                            function(x) sum(textcounter(c("nsubj(disagree, i)", "nsubj(object, i)",
+                                                                          "nsubj(disagree, we)", "nsubj(object, we)",
+                                                                          "acomp('re, wrong)", "acomp(are, wrong)",
+                                                                          "acomp('re, incorrect)", "acomp(are, incorrect)",
+                                                                          "acomp('s, wrong)", "acomp(is, wrong)",
+                                                                          "acomp('s, incorrect)", "acomp(is, incorrect)",
+                                                                          "acomp('s, untrue)", "acomp(is, untrue)",
+                                                                          "det(lie, a)", "det(myth, a)",
+                                                                          "acomp('s, false)", "acomp(is, false)"), x, words=TRUE,
+                                                                        num_mc_cores=num_mc_cores)), numeric(1))
+                                   + textcounter(apply(expand.grid(c("bad", "terrible", "horrible", "awful", "dumb", "stupid"),
+                                                                   c("idea", "point", "suggestion")), 1, paste, collapse=" "),
+                                                 sets[["clean"]], num_mc_cores=num_mc_cores)
     )
 
-    features[["Acknowledgement"]]<-unlist(lapply(sets[["p.unnegs"]],function(x) sum(textcounter(c("nsubj(understand, i)","nsubj(see, i)","nsubj(acknowledge, i)",
-                                                                                                  "nsubj(hear, i)","nsubj(get, i)","dobj(take, point)",
-                                                                                                  "nsubj(understand, we)","nsubj(see, we)","nsubj(acknowledge, we)",
-                                                                                                  "nsubj(hear, we)","nsubj(get, we)"),x, words=TRUE,
-                                                                                                num_mc_cores=num_mc_cores))))
+    features[["Acknowledgement"]] <- vapply(sets[["p.unnegs"]], function(x) sum(textcounter(c("nsubj(understand, i)", "nsubj(see, i)", "nsubj(acknowledge, i)",
+                                                                                              "nsubj(hear, i)", "nsubj(get, i)", "dobj(take, point)",
+                                                                                              "nsubj(understand, we)", "nsubj(see, we)", "nsubj(acknowledge, we)",
+                                                                                              "nsubj(hear, we)", "nsubj(get, we)"), x, words=TRUE,
+                                                                                            num_mc_cores=num_mc_cores)), numeric(1))
 
-    features[["Subjectivity"]]<-unlist(lapply(sets[["p.nonum"]],function(x) sum(textcounter(c("nsubj(think, i)","nsubj(believe, i)","nsubj(suspect, i)",
-                                                                                              "nsubj(thought, i)","nsubj(felt, i)",
-                                                                                              "nsubj(presume, i)","nsubj(reckon, i)","nsubj(feel, i)",
-                                                                                              "poss(perspective, my)","poss(belief, my)","poss(view, my)",
-                                                                                              "poss(knowledge, my)","poss(opinion, my)",
-                                                                                              "nsubj(think, we)","nsubj(believe, we)","nsubj(suspect, we)",
-                                                                                              "nsubj(thought, we)","nsubj(felt, we)",
-                                                                                              "nsubj(presume, we)","nsubj(reckon, we)","nsubj(feel, we)",
-                                                                                              "poss(perspective, our)","poss(belief, our)","poss(view, our)",
-                                                                                              "poss(knowledge, our)","poss(opinion, our)"),x, words=TRUE,
-                                                                                            num_mc_cores=num_mc_cores))))
+    features[["Subjectivity"]] <- vapply(sets[["p.nonum"]], function(x) sum(textcounter(c("nsubj(think, i)", "nsubj(believe, i)", "nsubj(suspect, i)",
+                                                                                          "nsubj(thought, i)", "nsubj(felt, i)",
+                                                                                          "nsubj(presume, i)", "nsubj(reckon, i)", "nsubj(feel, i)",
+                                                                                          "poss(perspective, my)", "poss(belief, my)", "poss(view, my)",
+                                                                                          "poss(knowledge, my)", "poss(opinion, my)",
+                                                                                          "nsubj(think, we)", "nsubj(believe, we)", "nsubj(suspect, we)",
+                                                                                          "nsubj(thought, we)", "nsubj(felt, we)",
+                                                                                          "nsubj(presume, we)", "nsubj(reckon, we)", "nsubj(feel, we)",
+                                                                                          "poss(perspective, our)", "poss(belief, our)", "poss(view, our)",
+                                                                                          "poss(knowledge, our)", "poss(opinion, our)"), x, words=TRUE,
+                                                                                        num_mc_cores=num_mc_cores)), numeric(1))
 
 
-    features[["Bare.Command"]]<-unlist(lapply(sets[["pos.nums"]],function(x) sum(grepl("(1-",unlist(x),fixed=TRUE)
-                                                                                 &grepl("-vb)",unlist(x),fixed=TRUE)
-                                                                                 &(!grepl(paste0("-be-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-do-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-have-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-hope-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-excuse-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-thank-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-please-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-hang-"),unlist(x)))
-                                                                                 &(!grepl(paste0("-let-"),unlist(x)))
-    )))
+    features[["Bare.Command"]] <- vapply(sets[["pos.nums"]], function(x) sum(grepl("(1-", x, fixed=TRUE)
+                                                                             & grepl("-vb)", x, fixed=TRUE)
+                                                                             & (!grepl(paste0("-be-"), x))
+                                                                             & (!grepl(paste0("-do-"), x))
+                                                                             & (!grepl(paste0("-have-"), x))
+                                                                             & (!grepl(paste0("-hope-"), x))
+                                                                             & (!grepl(paste0("-excuse-"), x))
+                                                                             & (!grepl(paste0("-thank-"), x))
+                                                                             & (!grepl(paste0("-please-"), x))
+                                                                             & (!grepl(paste0("-hang-"), x))
+                                                                             & (!grepl(paste0("-let-"), x))
+    ), numeric(1))
     # what about when the first word is a negation, e.g. "don't go there"
 
     ######### QUESTION TYPES #########
-    q.words<-c("who","what","where","when","why","how","which") # now in spacyParser
-    features[["WH.Questions"]]<-(unlist(lapply(sets[["ques.pre.root"]],
-                                               function(x) sum(textcounter(q.words,x))))
+    q.words <- c("who", "what", "where", "when", "why", "how", "which") # now in spacyParser
+    features[["WH.Questions"]] <- (vapply(sets[["ques.pre.root"]],
+                                          function(x) sum(textcounter(q.words, x)), numeric(1))
     )
-    features[["Repair.Questions"]]<-textcounter(c("punct(who, ?)","punct(what, ?)","punct(pardon, ?)","punct(sorry, ?)",
-                                                  "punct(huh, ?)","punct(hm, ?)"),
-                                                sets[["p.nonum"]], words=TRUE,
-                                                num_mc_cores=num_mc_cores)
+    features[["Repair.Questions"]] <- textcounter(c("punct(who, ?)", "punct(what, ?)", "punct(pardon, ?)", "punct(sorry, ?)",
+                                                    "punct(huh, ?)", "punct(hm, ?)"),
+                                                  sets[["p.nonum"]], words=TRUE,
+                                                  num_mc_cores=num_mc_cores)
     #   Original list "What?","Sorry?","Excuse me?","Huh?","Who?","Pardon?","Say again?","Say it again?","What's that?","What is that?") # "what did you say?"
 
-    features[["Tag.Questions"]]<-unlist(lapply(text,
-                                               function(x) sum(textcounter(c("right?","you know?","eh?",
-                                                                             # "what do you think?",
-                                                                             "do you?","don't you?"),x,
-                                                                           num_mc_cores=num_mc_cores))))
+    features[["Tag.Questions"]] <- vapply(text,
+                                          function(x) sum(textcounter(c("right?", "you know?", "eh?",
+                                                                        # "what do you think?",
+                                                                        "do you?", "don't you?"), x,
+                                                                      num_mc_cores=num_mc_cores)), numeric(1))
 
     # false positive WH: "Given what has happened, do you know enough to decide?"
-    features[["YesNo.Questions"]]<-(features[["Questions"]]
-                                    -features[["WH.Questions"]]
-                                    -features[["Repair.Questions"]]
-                                    -features[["Tag.Questions"]]
+    features[["YesNo.Questions"]] <- (features[["Questions"]]
+                                      - features[["WH.Questions"]]
+                                      - features[["Repair.Questions"]]
+                                      - features[["Tag.Questions"]]
     )
-    features[["Questions"]]<-NULL
+    features[["Questions"]] <- NULL
     #########################################
 
-    features[["Gratitude"]]<-(unlist(lapply(sets[["c.words"]], function(x) sum(startsWith(unlist(x), prefix="thank"))))+
-                                unlist(lapply(sets[["c.words"]], function(x) sum(startsWith(unlist(x), prefix="grateful"))))+
-                                unlist(lapply(sets[["c.words"]], function(x) sum(startsWith(unlist(x), prefix="gratitude"))))+
-                                unlist(lapply(sets[["p.unnegs"]], function(x) sum(grepl("(appreciate, we)",x,fixed=TRUE))))+
-                                unlist(lapply(sets[["p.unnegs"]], function(x) sum(grepl("(appreciate, i)",x,fixed=TRUE)))))
+    features[["Gratitude"]] <- (vapply(sets[["c.words"]], function(x) sum(startsWith(x, prefix="thank")), numeric(1)) +
+                                  vapply(sets[["c.words"]], function(x) sum(startsWith(x, prefix="grateful")), numeric(1)) +
+                                  vapply(sets[["c.words"]], function(x) sum(startsWith(x, prefix="gratitude")), numeric(1)) +
+                                  vapply(sets[["p.unnegs"]], function(x) sum(grepl("(appreciate, we)", x, fixed=TRUE)), numeric(1)) +
+                                  vapply(sets[["p.unnegs"]], function(x) sum(grepl("(appreciate, i)", x, fixed=TRUE)), numeric(1)))
 
-    features[["Apology"]]<-(textcounter(c("woops","oops","whoops"),sets[["unneg.words"]],words=TRUE,
-                                        num_mc_cores=num_mc_cores)
-                            +textcounter(c("acomp(am, sorry)","acomp('m, sorry)",
-                                           "root(root, sorry)",
-                                           "nsubj(apologize, we)","nsubj(apologize, i)",
-                                           "nsubj(regret, i)", "nsubj(regret, we)",
-                                           "dobj(excuse, me)",
-                                           "poss(forgiveness, your)",
-                                           "dobj(forgive, me)"),sets[["p.unnegs"]], words=TRUE,
-                                         num_mc_cores=num_mc_cores)
-                            +(textcounter("nsubj(are, we)",sets[["p.unnegs"]],words=TRUE)&textcounter("acomp(are, sorry)",sets[["p.unnegs"]],words=TRUE))
-                            +(textcounter("nsubj('re, we)",sets[["p.unnegs"]],words=TRUE)&textcounter("acomp('re, sorry)",sets[["p.unnegs"]],words=TRUE))
-                            +(textcounter("xcomp(want, apologize)",sets[["self.unnegs"]]))
-                            +(textcounter("xcomp(have, apologize)",sets[["self.unnegs"]]))
-                            +(textcounter("xcomp(need, apologize)",sets[["self.unnegs"]]))
-                            +(textcounter("xcomp(like, apologize)",sets[["self.unnegs"]]))
-                            +(textcounter("intj(say, sorry)",sets[["self.unnegs"]]))
+    features[["Apology"]] <- (textcounter(c("woops", "oops", "whoops"), sets[["unneg.words"]], words=TRUE,
+                                          num_mc_cores=num_mc_cores)
+                              + textcounter(c("acomp(am, sorry)", "acomp('m, sorry)",
+                                              "root(root, sorry)",
+                                              "nsubj(apologize, we)", "nsubj(apologize, i)",
+                                              "nsubj(regret, i)", "nsubj(regret, we)",
+                                              "dobj(excuse, me)",
+                                              "poss(forgiveness, your)",
+                                              "dobj(forgive, me)"), sets[["p.unnegs"]], words=TRUE,
+                                            num_mc_cores=num_mc_cores)
+                              + (textcounter("nsubj(are, we)", sets[["p.unnegs"]], words=TRUE) & textcounter("acomp(are, sorry)", sets[["p.unnegs"]], words=TRUE))
+                              + (textcounter("nsubj('re, we)", sets[["p.unnegs"]], words=TRUE) & textcounter("acomp('re, sorry)", sets[["p.unnegs"]], words=TRUE))
+                              + (textcounter("xcomp(want, apologize)", sets[["self.unnegs"]]))
+                              + (textcounter("xcomp(have, apologize)", sets[["self.unnegs"]]))
+                              + (textcounter("xcomp(need, apologize)", sets[["self.unnegs"]]))
+                              + (textcounter("xcomp(like, apologize)", sets[["self.unnegs"]]))
+                              + (textcounter("intj(say, sorry)", sets[["self.unnegs"]]))
 
     )
-    features[["Truth.Intensifier"]]<-(textcounter(c("really", "actually", "honestly", "surely"),sets[["c.words"]],words=TRUE,
-                                                  num_mc_cores=num_mc_cores)
-                                      +textcounter(c("det(point, the)","det(reality, the)","det(truth, the)","pobj(fact, in)","case(fact, in)"),sets[["p.nonum"]], words=TRUE,
-                                                   num_mc_cores=num_mc_cores))
-    features[["Adverb.Limiter"]]<-unlist(lapply(sets[["p.nonum"]] ,function(x) sum(grepl("advmod",unlist(x))&
-                                                                                     (grepl("just)",unlist(x),fixed=TRUE)
-                                                                                      |grepl("only)",unlist(x),fixed=TRUE)
-                                                                                      |grepl("merely)",unlist(x),fixed=TRUE)
-                                                                                      |grepl("simply)",unlist(x),fixed=TRUE)))
-    ))
+    features[["Truth.Intensifier"]] <- (textcounter(c("really", "actually", "honestly", "surely"), sets[["c.words"]], words=TRUE,
+                                                    num_mc_cores=num_mc_cores)
+                                        + textcounter(c("det(point, the)", "det(reality, the)", "det(truth, the)", "pobj(fact, in)", "case(fact, in)"), sets[["p.nonum"]], words=TRUE,
+                                                      num_mc_cores=num_mc_cores))
+    features[["Adverb.Limiter"]] <- vapply(sets[["p.nonum"]], function(x) sum(grepl("advmod", x) &
+                                                                                (grepl("just)", x, fixed=TRUE)
+                                                                                 | grepl("only)", x, fixed=TRUE)
+                                                                                 | grepl("merely)", x, fixed=TRUE)
+                                                                                 | grepl("simply)", x, fixed=TRUE))), numeric(1))
+
   }
-  features[["Affirmation"]]<-textcounter(c("yeah","yes","ok","okay","perfect","fine","wow","great","amazing"),
-                                         sets[["c.words"]],words=TRUE,start=TRUE,
-                                         num_mc_cores=num_mc_cores)
+  features[["Affirmation"]] <- textcounter(c("yeah", "yes", "ok", "okay", "perfect", "fine", "wow", "great", "amazing"),
+                                           sets[["c.words"]], words=TRUE, start=TRUE,
+                                           num_mc_cores=num_mc_cores)
 
   # listed at the end for backward compatibility
-  features[["Conjunction.Start"]]<-textcounter(c("so","then","and","but","or","however"),
-                                               sets[["c.words"]],words=TRUE,start=TRUE,
-                                               num_mc_cores=num_mc_cores)
+  features[["Conjunction.Start"]] <- textcounter(c("so", "then", "and", "but", "or", "however"),
+                                                 sets[["c.words"]], words=TRUE, start=TRUE,
+                                                 num_mc_cores=num_mc_cores)
 
-  if(metric[1]=="binary"){
-    features<-parallel::mclapply(features, function(x) 1*(x>0), mc.cores=num_mc_cores)
-  } else if (metric[1]=="average"){
+  if (metric[1] == "binary") {
+    features <- parallel::mclapply(features, function(x) 1 * (x > 0), mc.cores=num_mc_cores)
+  } else if (metric[1] == "average") {
     word_counts <- stringr::str_count(text, "[[:alpha:]]+")
-    features<-parallel::mclapply(features, function(x) x*100/word_counts, mc.cores=num_mc_cores)
+    features <- parallel::mclapply(features, function(x) x * 100 / word_counts, mc.cores=num_mc_cores)
   }
-  feature.data<-as.data.frame(features)
-  feature.data[feature.data<0]<-0
-  if(drop_blank){
-    feature.data<-feature.data[,colMeans(feature.data,na.rm=TRUE)!=0, drop=FALSE]
+  feature.data <- as.data.frame(features)
+  feature.data[feature.data < 0] <- 0
+  if (drop_blank) {
+    feature.data <- feature.data[, colMeans(feature.data, na.rm=TRUE) != 0, drop=FALSE]
   }
   return(feature.data)
 }
-###############################################################
