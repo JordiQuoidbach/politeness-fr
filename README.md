@@ -50,7 +50,7 @@ devtools::install_github("JordiQuoidbach/politeness-fr")
 install.packages("politeness")
 ```
 
-Many of the politeness features contained in this package use dependency parsing. We rely on the popular python library [SpaCy](https://spacy.io/), which is simple to install, although the procedure can vary for different machines. Our software depends on a convenient wrapper function, [spacyr](https://spacyr.quanteda.io/), that also includes several installation tools. 
+Many of the politeness features contained in this package use dependency parsing. The package relies on the popular python library [SpaCy](https://spacy.io/), which is simple to install, although the procedure can vary for different machines. The software depends on a convenient wrapper function, [spacyr](https://spacyr.quanteda.io/), that also includes several installation tools. 
 
 **For French text analysis**, you need to install the French language model:
 
@@ -67,9 +67,9 @@ spacyr::spacy_initialize(model = "fr_core_news_sm")
 
 If you do not have SpaCy installed, a reduced set of features is provided (i.e. those that do not require dependency tags) but this is only recommended for initial tests, rather than final analyses.
 
-Please confirm that your machine can run SpaCy and spacyr first! This step can be difficult for some machines, and we defer to the existing documentation for that software as a guide.
+Please confirm that your machine can run SpaCy and spacyr first! This step can be difficult for some machines, and users should refer to the existing documentation for that software as a guide.
 
-If you want to try out this package without having to configure SpaCy on your own machine, I have written a tutorial that will let you analyse the data on [Colab](https://colab.research.google.com/github/myeomans/politenessTutorial/blob/main/colabr.ipynb). This will install everything you need automatically (though it does take ~ 20 minutes for everything to run). However, for people unfamiliar with python, it can be much easier to use colab to start, than to configure their own computer. 
+For users who want to try out the original package without having to configure SpaCy on their own machine, a tutorial is available on [Colab](https://colab.research.google.com/github/myeomans/politenessTutorial/blob/main/colabr.ipynb) that will install everything needed automatically (though it does take ~ 20 minutes for everything to run). However, for people unfamiliar with python, it can be much easier to use colab to start, than to configure their own computer. 
 
 
 ## Citation
